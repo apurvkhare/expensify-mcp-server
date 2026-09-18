@@ -1,0 +1,26 @@
+{
+  "name": "expensify-mcp-server",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "api:dev": "npm run dev -w apps/expensify",
+    "api:seed": "npm run seed -w apps/expensify",
+    "mcp:stdio": "npm run stdio -w apps/expensify-mcp",
+    "mcp:dev": "npm run dev -w apps/expensify-mcp",
+    "inspect": "node scripts/with-env.mjs inspector --server expensify-stdio",
+    "typecheck": "tsc -p tsconfig.json",
+    "inspect:remote": "node scripts/with-env.mjs inspector --server expensify-remote",
+    "logs": "node scripts/logs.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0",
+    "wrangler": "^4.133.0",
+    "@cloudflare/workers-types": "^5.20260917.1",
+    "@types/node": "^22.0.0"
+  }
+}

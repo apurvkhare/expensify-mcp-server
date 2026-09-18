@@ -1,0 +1,58 @@
+-- Demo data: July, August, September 2026. About 15 entries a month.
+-- Recurring: Notion, Claude Pro, Cult.fit, Airtel, Netflix. September keeps three Uber rides
+-- (so "delete the Uber expense" is ambiguous and elicitation fires) and one 85,000 laptop
+-- (so add_expense-style confirmation has a real-world reference point).
+DELETE FROM expenses;
+INSERT INTO expenses (id, amount, category, merchant, date, note, created_by) VALUES
+  -- ---------------- July 2026
+  ('exp_0701', 1999.00,  'software', 'Notion',           '2026-07-01', 'Team plan, monthly',            'apurv'),
+  ('exp_0702', 1700.00,  'software', 'Anthropic',        '2026-07-02', 'Claude Pro, monthly',           'apurv'),
+  ('exp_0703', 1450.00,  'health',   'Cult.fit',         '2026-07-03', 'Monthly membership',            'apurv'),
+  ('exp_0704', 599.00,   'office',   'Airtel',           '2026-07-04', 'Fiber, monthly',                'apurv'),
+  ('exp_0705', 649.00,   'other',    'Netflix',          '2026-07-05', 'Monthly',                       'apurv'),
+  ('exp_0706', 2100.00,  'food',     'Swiggy',           '2026-07-06', 'Weekend orders',                'apurv'),
+  ('exp_0707', 380.00,   'travel',   'Uber',             '2026-07-08', 'Client visit, Indiranagar',     'apurv'),
+  ('exp_0708', 5200.00,  'travel',   'IndiGo',           '2026-07-11', 'BLR to DEL, React meetup',      'apurv'),
+  ('exp_0709', 3800.00,  'travel',   'OYO',              '2026-07-12', 'Two nights, Delhi',             'apurv'),
+  ('exp_0710', 940.00,   'food',     'Big Chill',        '2026-07-12', 'Dinner with speakers',          'apurv'),
+  ('exp_0711', 1250.00,  'health',   'Apollo Pharmacy',  '2026-07-15', NULL,                            'apurv'),
+  ('exp_0712', 12500.00, 'office',   'Amazon',           '2026-07-18', 'Standing desk',                 'apurv'),
+  ('exp_0713', 450.00,   'food',     'Blue Tokai',       '2026-07-21', 'Coffee with friends',           'apurv'),
+  ('exp_0714', 7200.00,  'software', 'Vercel',           '2026-07-24', 'Pro, annual top-up',            'apurv'),
+  ('exp_0715', 1600.00,  'food',     'Toit',             '2026-07-26', 'Birthday dinner',               'apurv'),
+  ('exp_0716', 320.00,   'travel',   'Namma Metro',      '2026-07-29', 'Card recharge',                 'apurv'),
+  -- ---------------- August 2026
+  ('exp_0801', 1999.00,  'software', 'Notion',           '2026-08-01', 'Team plan, monthly',            'apurv'),
+  ('exp_0802', 1700.00,  'software', 'Anthropic',        '2026-08-02', 'Claude Pro, monthly',           'apurv'),
+  ('exp_0803', 1450.00,  'health',   'Cult.fit',         '2026-08-03', 'Monthly membership',            'apurv'),
+  ('exp_0804', 599.00,   'office',   'Airtel',           '2026-08-04', 'Fiber, monthly',                'apurv'),
+  ('exp_0805', 649.00,   'other',    'Netflix',          '2026-08-05', 'Monthly',                       'apurv'),
+  ('exp_0806', 1750.00,  'food',     'Zomato',           '2026-08-07', 'Weekday lunches',               'apurv'),
+  ('exp_0807', 2900.00,  'office',   'Croma',            '2026-08-09', 'USB-C hub and cables',          'apurv'),
+  ('exp_0808', 4200.00,  'health',   'Manipal Hospital', '2026-08-12', 'Annual checkup',                'apurv'),
+  ('exp_0809', 275.00,   'travel',   'Uber',             '2026-08-14', 'Airport drop, Swarnim',         'apurv'),
+  ('exp_0810', 3600.00,  'travel',   'Vistara',          '2026-08-15', 'BLR to HYD, one way',           'apurv'),
+  ('exp_0811', 2200.00,  'travel',   'Treebo',           '2026-08-15', 'One night, Hyderabad',          'apurv'),
+  ('exp_0812', 1100.00,  'food',     'Paradise Biryani', '2026-08-16', 'Team dinner',                   'apurv'),
+  ('exp_0813', 18000.00, 'software', 'Adobe',            '2026-08-20', 'Creative Cloud, annual',        'apurv'),
+  ('exp_0814', 520.00,   'food',     'Third Wave',       '2026-08-23', 'Cold brew and croissant',       'apurv'),
+  ('exp_0815', 990.00,   'other',    'BookMyShow',       '2026-08-28', 'Two movie tickets',             'apurv'),
+  ('exp_0816', 830.00,   'food',     'Swiggy',           '2026-08-30', 'Sunday order',                  'apurv'),
+  -- ---------------- September 2026
+  ('exp_0901', 1999.00,  'software', 'Notion',           '2026-09-01', 'Team plan, monthly',            'apurv'),
+  ('exp_0902', 320.00,   'travel',   'Uber',             '2026-09-02', 'Airport to home',               'apurv'),
+  ('exp_0903', 1700.00,  'software', 'Anthropic',        '2026-09-02', 'Claude Pro, monthly',           'apurv'),
+  ('exp_0904', 450.00,   'food',     'Blue Tokai',       '2026-09-03', 'Coffee with family',            'apurv'),
+  ('exp_0905', 1450.00,  'health',   'Cult.fit',         '2026-09-03', 'Monthly membership',            'apurv'),
+  ('exp_0906', 599.00,   'office',   'Airtel',           '2026-09-04', 'Fiber, monthly',                'apurv'),
+  ('exp_0907', 649.00,   'other',    'Netflix',          '2026-09-05', 'Monthly',                       'apurv'),
+  ('exp_0908', 185.00,   'travel',   'Uber',             '2026-09-06', 'Office to gym',                 'apurv'),
+  ('exp_0909', 1200.00,  'food',     'Toit',             '2026-09-07', 'Dinner, four people',           'apurv'),
+  ('exp_0910', 899.00,   'health',   'Apollo Pharmacy',  '2026-09-09', NULL,                            'apurv'),
+  ('exp_0911', 2400.00,  'office',   'Amazon',           '2026-09-10', 'Desk lamp and cables',          'apurv'),
+  ('exp_0912', 260.00,   'travel',   'Uber',             '2026-09-11', 'Client visit, Koramangala',     'apurv'),
+  ('exp_0913', 85000.00, 'office',   'Apple',            '2026-09-12', 'MacBook Air for the studio',    'apurv'),
+  ('exp_0914', 640.00,   'food',     'Swiggy',           '2026-09-13', 'Weekend lunch',                 'apurv'),
+  ('exp_0915', 3500.00,  'travel',   'IndiGo',           '2026-09-14', 'BLR to HYD, one way',           'apurv'),
+  ('exp_0916', 999.00,   'software', 'Cloudflare',       '2026-09-15', 'Workers paid plan trial',       'apurv'),
+  ('exp_0917', 390.00,   'food',     'Third Wave',       '2026-09-16', 'Cold brew and croissant',       'apurv');

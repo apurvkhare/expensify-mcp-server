@@ -1,0 +1,21 @@
+{
+  "mcpServers": {
+    "expensify-stdio": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["tsx", "apps/expensify-mcp/src/stdio.ts"],
+      "env": { "EXPENSIFY_API_URL": "http://localhost:8787" },
+      "protocolEra": "modern"
+    },
+    "expensify-local-http": {
+      "type": "http",
+      "url": "http://localhost:8788/mcp",
+      "protocolEra": "modern"
+    },
+    "expensify-remote": {
+      "type": "http",
+      "url": "https://expensify-mcp.${WORKERS_SUBDOMAIN}.workers.dev/mcp",
+      "protocolEra": "modern"
+    }
+  }
+}

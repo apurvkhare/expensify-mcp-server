@@ -1,0 +1,22 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "expensify",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  // No public URL. Only Workers on the same account with a service binding can call this one.
+  "workers_dev": false,
+  "preview_urls": false,
+  // ${...} values come from the root .env, filled in by scripts/with-env.mjs. See .env.example.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "expensify",
+      "database_id": "${D1_DATABASE_ID}",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  }
+}

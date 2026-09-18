@@ -1,0 +1,16 @@
+{
+  "name": "expensify-mcp",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "stdio": "tsx src/stdio.ts",
+    "dev": "node ../../scripts/with-env.mjs wrangler dev --port 8788",
+    "deploy": "node ../../scripts/with-env.mjs wrangler deploy"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.0.0",
+    "@cloudflare/workers-oauth-provider": "^0.10.3",
+    "api-client": "*",
+    "zod": "^4.0.0"
+  }
+}

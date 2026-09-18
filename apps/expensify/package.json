@@ -1,0 +1,17 @@
+{
+  "name": "expensify",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node ../../scripts/with-env.mjs wrangler dev --port 8787",
+    "deploy": "node ../../scripts/with-env.mjs wrangler deploy",
+    "migrate:local": "node ../../scripts/with-env.mjs wrangler d1 migrations apply expensify --local",
+    "migrate:remote": "node ../../scripts/with-env.mjs wrangler d1 migrations apply expensify --remote",
+    "seed": "node ../../scripts/with-env.mjs wrangler d1 execute expensify --local --file=./seed.sql",
+    "seed:remote": "node ../../scripts/with-env.mjs wrangler d1 execute expensify --remote --file=./seed.sql"
+  },
+  "dependencies": {
+    "hono": "^4.13.0",
+    "api-client": "*"
+  }
+}

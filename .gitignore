@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.wrangler/
+.dev.vars
+*.log
+.DS_Store
+# Real Cloudflare ids live in .env; scripts/with-env.mjs renders them into these files.
+.env
+wrangler.generated.jsonc
+inspector.generated.json

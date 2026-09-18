@@ -1,0 +1,23 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "expensify-mcp",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-09-01",
+  // global_fetch_strictly_public: required by workers-oauth-provider for Client ID Metadata Documents
+  "compatibility_flags": ["global_fetch_strictly_public"],
+  // ${...} values come from the root .env, filled in by scripts/with-env.mjs. See .env.example.
+  "kv_namespaces": [
+    { "binding": "OAUTH_KV", "id": "${KV_NAMESPACE_ID}" }
+  ],
+  // The REST Worker is private. This binding is how we call it.
+  "services": [{ "binding": "API", "service": "expensify" }],
+  "vars": {
+    // No API_BASE_URL here: deployed, the API binding above is used. For wrangler dev it comes from .dev.vars.
+    // This Worker's own public origin. The OAuth resource identifier is PUBLIC_URL + /mcp
+    "PUBLIC_URL": "https://expensify-mcp.${WORKERS_SUBDOMAIN}.workers.dev"
+  },
+  "observability": {
+    "enabled": true,
+    "traces": { "enabled": true }
+  }
+}

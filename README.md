@@ -32,7 +32,7 @@ Remote, with the OAuth login page (owner with a password, plus a read-only guest
 ```bash
 claude mcp add --transport http expensify-remote http://localhost:8788/mcp
 claude mcp login expensify-remote
-node scripts/oauth-smoke.mjs http://localhost:8788 apurv
+node scripts/oauth-smoke.mjs http://localhost:8788          # as guest; owner: OWNER_PASSWORD=... <url> apurv
 ```
 
 ## What is where

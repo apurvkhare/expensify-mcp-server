@@ -3,13 +3,18 @@
  * Walks the whole OAuth 2.1 flow against a running expensify-mcp, the way a host does,
  * then makes one authenticated MCP call. Useful for rehearsal without a host.
  *
- *   node scripts/oauth-smoke.mjs http://localhost:8788 apurv
- *   node scripts/oauth-smoke.mjs https://expensify-mcp.<sub>.workers.dev apurv --cimd
+ *   node scripts/oauth-smoke.mjs http://localhost:8788
+ *   node scripts/oauth-smoke.mjs https://expensify-mcp.<sub>.workers.dev guest --cimd
+ *   OWNER_PASSWORD=... node scripts/oauth-smoke.mjs http://localhost:8788 apurv
+ *
+ * The default user is "guest": no password, read-only. It walks the flow, reads a summary,
+ * and shows a write being refused. As "apurv" (the owner) it needs OWNER_PASSWORD in the
+ * environment, and also runs the write and elicitation steps, cleaning up after itself.
  */
 import { createHash, randomBytes } from 'node:crypto';
 
 const base = (process.argv[2] ?? 'http://localhost:8788').replace(/\/+$/, '');
-const user = process.argv[3] ?? 'apurv';
+const user = process.argv[3] && !process.argv[3].startsWith('--') ? process.argv[3] : 'guest';
 // --cimd: identify by Client ID Metadata Document URL instead of registering (deployed server only)
 const useCimd = process.argv.includes('--cimd');
 const mcpUrl = `${base}/mcp`;
@@ -69,11 +74,13 @@ console.log(page.status, page.headers.get('content-type'), '(consent page)');
 // 6. The user clicks a button: POST the form back
 step(6, `POST /authorize as "${user}"`);
 const form = new URLSearchParams({ user });
+// The owner form has a password field. Taken from the environment so it never lands in shell history.
+if (process.env.OWNER_PASSWORD) form.set('password', process.env.OWNER_PASSWORD);
 const consent = await fetch(authUrl, { method: 'POST', body: form, redirect: 'manual' });
 const location = consent.headers.get('location') ?? '';
 console.log(consent.status, location.replace(/code=[^&]+/, 'code=…'));
 if (consent.status !== 302 || !location) {
-  console.log('Sign-in refused:', (await consent.text()).slice(0, 120));
+  console.log(`Sign-in refused (${consent.status}).`, user === 'guest' ? '' : 'The owner needs OWNER_PASSWORD set in the environment.');
   process.exit(1);
 }
 const cb = new URL(location);
@@ -120,7 +127,8 @@ console.log(res.status, res.headers.get('content-type'));
 console.log((await res.text()).slice(0, 600));
 
 // 9. A write as this user (needs the expenses:write scope; refused inside the tool without it)
-step(9, 'POST /mcp tools/call add_expense');
+const canWrite = (tok.scope ?? '').split(' ').includes('expenses:write');
+step(9, `POST /mcp tools/call add_expense (${canWrite ? 'should be recorded' : 'read-only token: expect a readable refusal'})`);
 const res2 = await fetch(mcpUrl, {
   method: 'POST',
   headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream', authorization: `Bearer ${tok.access_token}`, 'MCP-Protocol-Version': '2026-07-28', 'Mcp-Method': 'tools/call', 'Mcp-Name': 'add_expense' },
@@ -129,6 +137,12 @@ const res2 = await fetch(mcpUrl, {
 const res2Text = await res2.text();
 console.log(res2.status, res2Text.slice(0, 400));
 const smokeId = /Recorded (exp_[a-z0-9]+)/i.exec(res2Text)?.[1];
+
+if (!canWrite) {
+  console.log('\nSteps 10 and 11 are write flows (elicitation, confirmation). Skipped for a read-only token.');
+  console.log('Run as the owner to see them: OWNER_PASSWORD=... node scripts/oauth-smoke.mjs <url> apurv');
+  process.exit(0);
+}
 
 // 10. Elicitation as a multi round-trip: several Uber rides match, the server asks which one, we answer.
 step(10, 'POST /mcp tools/call update_expense merchant=Uber (expect input_required), then retry with the answer');

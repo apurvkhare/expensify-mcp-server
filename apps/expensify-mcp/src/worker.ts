@@ -10,6 +10,8 @@
 import { OAuthProvider } from '@cloudflare/workers-oauth-provider';
 import { createMcpHandler, hostHeaderValidationResponse, originValidationResponse, type AuthInfo } from '@modelcontextprotocol/server';
 import { createApiClient } from 'api-client';
+// Built by `npm run build:ui`. Wrangler bundles .html imports as text, so the view ships inside the Worker.
+import appHtml from '../dist/mcp-app.html';
 import { USERS, defaultHandler, type AuthProps, type Env } from './auth-ui.ts';
 import { consoleLogger } from './log.ts';
 import { SCOPE_READ, SCOPE_WRITE, callerFrom, createExpensifyServer } from './server.ts';
@@ -49,7 +51,7 @@ const mcpApi: ExportedHandler<Env> & Required<Pick<ExportedHandler<Env>, 'fetch'
     const api = env.API_BASE_URL
       ? createApiClient(env.API_BASE_URL)
       : createApiClient('http://expensify', (input, init) => binding.fetch(input, init));
-    const handler = createMcpHandler((mcpCtx) => createExpensifyServer({ api, log, caller: callerFrom(mcpCtx.authInfo) }), {
+    const handler = createMcpHandler((mcpCtx) => createExpensifyServer({ api, log, caller: callerFrom(mcpCtx.authInfo), appHtml: () => appHtml }), {
       onerror: (err) => log({ event: 'error', message: err.message })
     });
     try {

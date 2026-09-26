@@ -6,6 +6,7 @@ MCP masterclass webinar. Spec revision 2026-07-28, TypeScript SDK v2, Cloudflare
 ```
 apps/expensify/        The REST service. Hono + D1. Exists "before MCP".
 apps/expensify-mcp/    The MCP server. One factory, two entries: stdio (local) and Worker (remote, OAuth 2.1).
+apps/expensify-mcp/ui/ The MCP App: a React dashboard that get_summary and list_expenses render into, on hosts that support it.
 packages/api-client/   Zod shapes and a fetch client shared by both.
 scripts/oauth-smoke.mjs  Walks the OAuth flow the way a host does, then calls tools. The "what does the host do" appendix.
 ```
@@ -16,7 +17,8 @@ scripts/oauth-smoke.mjs  Walks the OAuth flow the way a host does, then calls to
 npm install
 npm run -w apps/expensify migrate:local && npm run -w apps/expensify seed
 npm run api:dev          # http://localhost:8787
-npm run mcp:dev          # http://localhost:8788  (OAuth + /mcp)
+npm run mcp:ui           # build the MCP App view into apps/expensify-mcp/dist/mcp-app.html (the stdio entry reads it from there)
+npm run mcp:dev          # http://localhost:8788  (OAuth + /mcp). Builds the view first
 ```
 
 Local stdio server, talking to the local API:
@@ -44,6 +46,10 @@ node scripts/oauth-smoke.mjs http://localhost:8788          # as guest; owner: O
 | Prompts (`monthly_report`, `import_statement`) | same |
 | Elicitation as `input_required` (which Uber ride, confirm a large amount) | same, `resolveOne` and `add_expense` |
 | Scope check inside tools, identity from the token | same, `callerFrom`, `canWrite` |
+| MCP App: `registerAppTool` links the two read tools to `ui://expensify/dashboard.html`, `registerAppResource` serves it | same, `APP_RESOURCE_URI` |
+| The view: host theming, tool input/result handlers, re-querying through `callServerTool` | `apps/expensify-mcp/ui/src/mcp-app.tsx` |
+| Writing from the view: row edit and delete dialogs call `update_expense` / `delete_expense` by id, validate with the shared Zod schema, then `updateModelContext` tells the model what changed | `apps/expensify-mcp/ui/src/ExpenseDialogs.tsx` |
+| How one HTML file reaches both entries: text module on Workers, `readFile` on stdio | `ServerDeps.appHtml`, `worker.ts`, `stdio.ts` |
 | stdio entry, logs to stderr | `apps/expensify-mcp/src/stdio.ts` |
 | Worker entry: OAuth provider wrapping `createMcpHandler`, host and origin guards | `apps/expensify-mcp/src/worker.ts` |
 | The only auth code we write: who signs in, which scopes | `apps/expensify-mcp/src/auth-ui.ts` |

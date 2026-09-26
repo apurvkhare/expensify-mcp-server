@@ -2,16 +2,24 @@
  * The Expensify MCP server: a factory that builds a fresh McpServer per
  * serving unit (one HTTP request on Workers, one connection on stdio).
  * Nothing about the wire protocol appears here. Tools, resources, prompts,
- * and the one place we ask the user a question.
+ * the one place we ask the user a question, and the MCP App view the two
+ * read tools share.
  */
+import { RESOURCE_MIME_TYPE, getUiCapability, registerAppResource, registerAppTool } from '@modelcontextprotocol/ext-apps/server';
 import {
+  CLIENT_CAPABILITIES_META_KEY,
+  CLIENT_INFO_META_KEY,
   McpServer,
+  PROTOCOL_VERSION_META_KEY,
   ResourceTemplate,
+  TRACEPARENT_META_KEY,
   acceptedContent,
   inputRequired,
   inputResponse,
   type AuthInfo,
   type CallToolResult,
+  type ClientCapabilities,
+  type Implementation,
   type InputRequiredResult,
   type ServerContext
 } from '@modelcontextprotocol/server';
@@ -33,6 +41,11 @@ export const SCOPE_READ = 'expenses:read';
 export const SCOPE_WRITE = 'expenses:write';
 /** add_expense asks for confirmation at or above this amount. */
 export const CONFIRM_THRESHOLD = 10_000;
+/**
+ * The dashboard both read tools render into, on hosts that support MCP Apps.
+ * Hosts that do not simply ignore the link and show the text result as before.
+ */
+export const APP_RESOURCE_URI = 'ui://expensify/dashboard.html';
 
 export interface Caller {
   subject: string;
@@ -55,6 +68,11 @@ export interface ServerDeps {
   api: ApiClient;
   log: Logger;
   caller: Caller;
+  /**
+   * The built view (dist/mcp-app.html, from `npm run build:ui`). Each entry loads it its own way:
+   * Workers has no filesystem and bundles it as a text module, stdio reads it from disk.
+   */
+  appHtml: () => string | Promise<string>;
 }
 
 const text = (t: string): CallToolResult => ({ content: [{ type: 'text', text: t }] });
@@ -64,7 +82,7 @@ function line(e: Expense): string {
   return `${e.id}  ${e.date}  ${e.category.padEnd(8)}  ${formatINR(e.amount).padStart(12)}  ${e.merchant}${e.note ? `  (${e.note})` : ''}`;
 }
 
-export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServer {
+export function createExpensifyServer({ api, log, caller, appHtml }: ServerDeps): McpServer {
   const server = new McpServer(
     { name: 'expensify', version: '0.1.0', title: 'Expensify' },
     {
@@ -74,6 +92,25 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
       cacheHints: { 'tools/list': { ttlMs: 60_000, cacheScope: 'private' } }
     }
   );
+
+  /**
+   * Who is calling, and whether it can render the dashboard (hosts that render MCP Apps say so in their capabilities).
+   * On 2026-07-28 every request carries this in its envelope, so it is read per request: there is no
+   * initialize handshake, and on Workers each request gets a fresh server that never saw one anyway.
+   * 2025-era clients send no envelope; for them the SDK keeps the initialize-scoped accessor working
+   * (populated on stdio only). Delete that fallback once hosts negotiate 2026-07-28.
+   */
+  function clientOf(ctx: ServerContext) {
+    const envelope = ctx.mcpReq.envelope as Record<string, unknown> | undefined;
+    const info = (envelope?.[CLIENT_INFO_META_KEY] as Implementation | undefined) ?? server.server.getClientVersion();
+    const capabilities = (envelope?.[CLIENT_CAPABILITIES_META_KEY] as ClientCapabilities | undefined) ?? server.server.getClientCapabilities();
+    return {
+      client: info?.name,
+      clientVersion: info?.version,
+      protocol: typeof envelope?.[PROTOCOL_VERSION_META_KEY] === 'string' ? envelope[PROTOCOL_VERSION_META_KEY] : 'legacy',
+      ui: getUiCapability(capabilities)?.mimeTypes?.includes(RESOURCE_MIME_TYPE) ?? false
+    };
+  }
 
   const canWrite = () => caller.scopes.includes(SCOPE_WRITE);
   const writeRefusal = () =>
@@ -97,29 +134,32 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
   ): Promise<CallToolResult | InputRequiredResult> {
     const started = Date.now();
     const meta = (ctx.mcpReq._meta ?? {}) as Record<string, unknown>;
-    const traceparent = typeof meta.traceparent === 'string' ? meta.traceparent : undefined;
+    const traceparent = typeof meta[TRACEPARENT_META_KEY] === 'string' ? meta[TRACEPARENT_META_KEY] : undefined;
+    const client = clientOf(ctx);
     return body()
       .then((result) => {
         const isError = 'isError' in result && result.isError === true;
-        log({ event: 'tool', tool, ms: Date.now() - started, ok: !isError, subject: caller.subject, traceparent });
+        log({ event: 'tool', tool, ms: Date.now() - started, ok: !isError, subject: caller.subject, ...client, traceparent });
         return result;
       })
       .catch((err: unknown) => {
         const message = err instanceof ApiError ? err.message : err instanceof Error ? err.message : String(err);
-        log({ event: 'tool', tool, ms: Date.now() - started, ok: false, subject: caller.subject, traceparent, error: message });
+        log({ event: 'tool', tool, ms: Date.now() - started, ok: false, subject: caller.subject, ...client, traceparent, error: message });
         return fail(`${tool} failed: ${message}`);
       });
   }
 
   // ---------------------------------------------------------------- tools
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'list_expenses',
     {
       title: 'List expenses',
       description:
         'List expenses, newest first, with optional filters. Returns at most `limit` rows (max 50). ' +
-        'For totals use get_summary; do not sum this list yourself.',
+        'For totals use get_summary; do not sum this list yourself. ' +
+        'Hosts that render MCP Apps show this as an interactive table with the totals one click away, so one call is enough to show the user their expenses.',
       inputSchema: z.object({
         from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date YYYY-MM-DD, inclusive'),
         to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date YYYY-MM-DD, inclusive'),
@@ -129,6 +169,8 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
       }),
       outputSchema: z.object({
         count: z.number().int(),
+        // The view shows its edit and delete buttons from this. It is a courtesy, not the gate: the write tools check the scope themselves.
+        editable: z.boolean().describe('Whether this caller may change these expenses (expenses:write)'),
         expenses: z.array(
           z.object({
             id: z.string(),
@@ -141,7 +183,8 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
           })
         )
       }),
-      annotations: { readOnlyHint: true, idempotentHint: true }
+      annotations: { readOnlyHint: true, idempotentHint: true },
+      _meta: { ui: { resourceUri: APP_RESOURCE_URI } }
     },
     (args, ctx) =>
       timed('list_expenses', ctx, async () => {
@@ -149,16 +192,20 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
         const expenses = rows.map(({ id, date, category, merchant, amount, note }) => ({ id, date, category, merchant, amount, ...(note ? { note } : {}) }));
         return {
           content: [{ type: 'text', text: rows.length ? rows.map(line).join('\n') : 'No expenses match.' }],
-          structuredContent: { count: rows.length, expenses }
+          structuredContent: { count: rows.length, editable: canWrite(), expenses }
         };
       })
   );
 
-  server.registerTool(
+  registerAppTool(
+    server,
     'get_summary',
     {
       title: 'Spending summary',
-      description: 'Total spend and a breakdown grouped by category, merchant, or month. Use this for any "how much" question.',
+      description:
+        'Total spend and a breakdown grouped by category, merchant, or month. Use this for any "how much" question. ' +
+        'Hosts that render MCP Apps show this as an interactive dashboard where the user can open the matching expenses themselves, ' +
+        'so do not also call list_expenses just to display them.',
       inputSchema: z.object({
         from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('Start date YYYY-MM-DD, inclusive'),
         to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().describe('End date YYYY-MM-DD, inclusive'),
@@ -171,7 +218,8 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
         groupBy: z.enum(GROUP_BY),
         groups: z.array(z.object({ key: z.string(), total: z.number(), count: z.number().int() }))
       }),
-      annotations: { readOnlyHint: true, idempotentHint: true }
+      annotations: { readOnlyHint: true, idempotentHint: true },
+      _meta: { ui: { resourceUri: APP_RESOURCE_URI } }
     },
     (args, ctx) =>
       timed('get_summary', ctx, async () => {
@@ -320,6 +368,17 @@ export function createExpensifyServer({ api, log, caller }: ServerDeps): McpServ
   );
 
   // ------------------------------------------------------------ resources
+
+  // The view is self-contained (one HTML file, no network), so it declares no CSP domains.
+  // It talks to this server only through the host: the two read tools to load, and update_expense
+  // and delete_expense (always by id, so they never need to ask "which one?") for the row buttons.
+  registerAppResource(
+    server,
+    'Expenses dashboard',
+    APP_RESOURCE_URI,
+    { description: 'Interactive view for get_summary and list_expenses: totals, a breakdown chart, and the expense table.' },
+    async () => ({ contents: [{ uri: APP_RESOURCE_URI, mimeType: RESOURCE_MIME_TYPE, text: await appHtml() }] })
+  );
 
   server.registerResource(
     'this-month',

@@ -12,7 +12,9 @@
     "mcp:stdio": "npm run stdio -w apps/expensify-mcp",
     "mcp:dev": "npm run dev -w apps/expensify-mcp",
     "inspect": "node scripts/with-env.mjs inspector --server expensify-stdio",
-    "typecheck": "tsc -p tsconfig.json",
+    "mcp:ui": "npm run build:ui -w apps/expensify-mcp",
+    "mcp:preview": "npm run mcp:ui && tsx scripts/ui-preview.ts",
+    "typecheck": "tsc -p tsconfig.json && npm run typecheck:ui -w apps/expensify-mcp",
     "inspect:remote": "node scripts/with-env.mjs inspector --server expensify-remote",
     "logs": "node scripts/logs.mjs"
   },
